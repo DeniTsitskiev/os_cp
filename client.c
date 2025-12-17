@@ -13,6 +13,17 @@ void *requester;
 char player_name[MAX_NAME_LEN];
 int current_game_id = -1;
 
+// Извлечь числовой ID из ответа сервера, возвращает -1 если не найден
+static int extract_id_from_response(const char *response) {
+    if (!response) return -1;
+    const char *p = strstr(response, "ID:");
+    if (!p) return -1;
+    int id = -1;
+    if (sscanf(p, "ID: %d", &id) == 1) return id;
+    if (sscanf(p, "ID:%d", &id) == 1) return id;
+    return -1;
+}
+
 // Функция для отправки запроса и получения ответа
 int send_request(const char *request, char *response) {
     zmq_send(requester, request, strlen(request), 0);
@@ -90,9 +101,13 @@ void create_game() {
     send_request(request, response);
     
     if (strncmp(response, "OK:", 3) == 0) {
-        sscanf(response, "OK:Игра '%*[^']' создана (ID: %d", &current_game_id);
+        current_game_id = extract_id_from_response(response);
         printf("\n%s\n", response + 3);
-        printf("Вы в игре! ID игры: %d\n", current_game_id);
+        if (current_game_id != -1) {
+            printf("Вы в игре! ID игры: %d\n", current_game_id);
+        } else {
+            printf("Не удалось разобрать ID игры из ответа сервера.\n");
+        }
     } else {
         printf("\nОшибка: %s\n", response + 6);
     }
@@ -111,9 +126,13 @@ void join_game() {
     send_request(request, response);
     
     if (strncmp(response, "OK:", 3) == 0) {
-        sscanf(response, "OK:Присоединились к игре '%*[^']' (ID: %d", &current_game_id);
+        current_game_id = extract_id_from_response(response);
         printf("\n%s\n", response + 3);
-        printf("Вы в игре! ID игры: %d\n", current_game_id);
+        if (current_game_id != -1) {
+            printf("Вы в игре! ID игры: %d\n", current_game_id);
+        } else {
+            printf("Не удалось разобрать ID игры из ответа сервера.\n");
+        }
     } else {
         printf("\nОшибка: %s\n", response + 6);
     }

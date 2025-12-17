@@ -137,7 +137,10 @@ int create_game(const char *game_name, int max_players, const char *creator_name
     }
     
     Game *game = &games[games_count];
+    /* Инициализируем структуру игры и слоты игроков */
+    memset(game, 0, sizeof(Game));
     strncpy(game->game_name, game_name, MAX_NAME_LEN - 1);
+    game->game_name[MAX_NAME_LEN-1] = '\0';
     game->max_players = max_players;
     game->current_players = 1;
     game->active = 1;
@@ -146,6 +149,7 @@ int create_game(const char *game_name, int max_players, const char *creator_name
     
     // Добавляем создателя как первого игрока
     strncpy(game->players[0].name, creator_name, MAX_NAME_LEN - 1);
+    game->players[0].name[MAX_NAME_LEN-1] = '\0';
     game->players[0].active = 1;
     game->players[0].attempts = 0;
     
@@ -379,9 +383,21 @@ void run_server() {
         printf("Получено: %s\n", buffer);
         
         char response[BUFFER_SIZE];
-        char command[64], arg1[MAX_NAME_LEN], arg2[MAX_NAME_LEN], arg3[MAX_NAME_LEN];
-        
-        sscanf(buffer, "%s %s %s %s", command, arg1, arg2, arg3);
+        char command[64] = {0}, arg1[MAX_NAME_LEN] = {0}, arg2[MAX_NAME_LEN] = {0}, arg3[MAX_NAME_LEN] = {0};
+
+        /* Надёжный парсинг токенов (UTF-8-safe — разбивает по пробелам байтово) */
+        char bufcopy[BUFFER_SIZE];
+        strncpy(bufcopy, buffer, BUFFER_SIZE - 1);
+        bufcopy[BUFFER_SIZE - 1] = '\0';
+        char *saveptr = NULL;
+        char *tok = strtok_r(bufcopy, " ", &saveptr);
+        if (tok) strncpy(command, tok, sizeof(command) - 1);
+        tok = strtok_r(NULL, " ", &saveptr);
+        if (tok) strncpy(arg1, tok, sizeof(arg1) - 1);
+        tok = strtok_r(NULL, " ", &saveptr);
+        if (tok) strncpy(arg2, tok, sizeof(arg2) - 1);
+        tok = strtok_r(NULL, " ", &saveptr);
+        if (tok) strncpy(arg3, tok, sizeof(arg3) - 1);
         
         if (strcmp(command, "LIST") == 0) {
             get_games_list(response);
