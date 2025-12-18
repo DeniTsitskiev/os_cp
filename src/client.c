@@ -34,9 +34,9 @@ void show_rules() {
     printf("==============================\n\n");
 }
 
-// Повыпторно читает слово у пользователя до тех пор, пока не пустит корректное
+// Читает 5-буквенное слово у пользователя (любые буквы a-z)
 // Параметры: w - буфер для сохранения
-// На "quit" возвращаем -1, иначе 0
+// На "quit" возвращаем -1, иначе 0 при ошибке, 1 при успехе
 int get_word(char *w) {
     char buf[100];
     printf("Введите слово (или 'quit' для выхода): ");
@@ -55,9 +55,17 @@ int get_word(char *w) {
         return -1; // сигнал к выходу
     }
     
-    if (!word_ok(buf)) {
-        printf("Неверное слово\n");
+    // Проверяем только длину и буквы (не проверяем наличие в словаре)
+    if (strlen(buf) != WORD_LENGTH) {
+        printf("Слово должно быть ровно %d букв\n", WORD_LENGTH);
         return 0;
+    }
+    
+    for (int i = 0; i < WORD_LENGTH; i++) {
+        if (buf[i] < 'a' || buf[i] > 'z') {
+            printf("Используйте только буквы a-z\n");
+            return 0;
+        }
     }
     
     strcpy(w, buf);
@@ -107,6 +115,7 @@ void make_game(void *s, const char *u) {
     
     printf("\nИгра '%s' создана!\n", p.game_id);
     printf("Игроков: %d\n", p.player_cnt);
+    printf("[DEBUG] Секрет: %s\n", p.word);
     
     game_play(s, u, p.game_id);
 }
@@ -138,6 +147,7 @@ void join_game(void *s, const char *u) {
     
     printf("\nВы в игре '%s'!\n", p.game_id);
     printf("Игроков: %d\n", p.player_cnt);
+    printf("[DEBUG] Секрет: %s\n", p.word);
     
     game_play(s, u, p.game_id);
 }

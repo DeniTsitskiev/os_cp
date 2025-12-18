@@ -103,6 +103,7 @@ void do_new_play(Msg *req, Msg *res) {
     res->cmd = MSG_GAME_OK;
     strcpy(res->game_id, p->title);
     res->player_cnt = p->users_cnt;
+    strcpy(res->word, p->secret);  // Отправляем секрет для debug
     
     pthread_mutex_unlock(&srv_lock);
 }
@@ -163,6 +164,7 @@ void do_join(Msg *req, Msg *res) {
     res->cmd = MSG_JOINED_OK;
     strcpy(res->game_id, p->title);
     res->player_cnt = p->users_cnt;
+    strcpy(res->word, p->secret);  // Отправляем секрет для debug
     
     pthread_mutex_unlock(&srv_lock);
 }
@@ -211,11 +213,21 @@ void do_try(Msg *req, Msg *res) {
         return;
     }
     
-    if (!word_ok(req->word)) {
+    // Проверяем только длину и буквы (не словарь)
+    if (strlen(req->word) != WORD_LENGTH) {
         res->cmd = MSG_FAIL;
-        strcpy(res->msg, "Bad word");
+        strcpy(res->msg, "Bad length");
         pthread_mutex_unlock(&srv_lock);
         return;
+    }
+    
+    for (int i = 0; i < WORD_LENGTH; i++) {
+        if (req->word[i] < 'a' || req->word[i] > 'z') {
+            res->cmd = MSG_FAIL;
+            strcpy(res->msg, "Bad chars");
+            pthread_mutex_unlock(&srv_lock);
+            return;
+        }
     }
     
     u->tries_cnt++;
@@ -232,9 +244,24 @@ void do_try(Msg *req, Msg *res) {
     strcpy(res->res.who, u->login);
     
     if (b == WORD_LENGTH) {
-        p->run = 0;
+        // Игрок выиграл - помечаем его неактивным
+        u->ok = 0;
         res->cmd = MSG_WIN;
         printf("Победитель: '%s' в игре '%s'\n", u->login, p->title);
+        
+        // Проверяем, осталось ли активных игроков
+        int active_cnt = 0;
+        for (int j = 0; j < p->users_cnt; j++) {
+            if (p->team[j].ok) {
+                active_cnt++;
+            }
+        }
+        
+        // Если активных игроков больше нет - завершаем игру
+        if (active_cnt == 0) {
+            p->run = 0;
+            printf("Игра '%s' завершена (все угадали или вышли)\n", p->title);
+        }
     } else {
         res->cmd = MSG_TRY_RESULT;
     }
